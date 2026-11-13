@@ -1,0 +1,72 @@
+
+import { useState } from "react";
+import { menu } from "./data/menu";
+import { MAX_QUANTITY } from "./orderItems";
+import type { OrderItem } from "./orderItems";
+import { formatPrice } from "./utils/formatPrice";
+import Menu from "./components/Menu";
+import Order from "./components/Order";
+import CheckoutForm from "./components/CheckoutForm";
+import type { Checkout } from "./types";
+
+function App() {
+  // lo stato sta tutto in App e scende ai componenti con le props
+  const [order, setOrder] = useState<OrderItem[]>([]);
+  const [confirmed, setConfirmed] = useState("");
+
+  // trovo nel menu il prodotto con questo id
+  function getProduct(id: number) {
+    return menu.find(p => p.id === id)!;
+  }
+
+  // totale con reduce: parto da 0 e per ogni riga aggiungo prezzo × quantità
+  const total = order.reduce((somma, item) => somma + getProduct(item.productId).price * item.quantity, 0);
+
+  // "Aggiungi" e "+" fanno la stessa cosa
+  function addProduct(id: number) {
+    const item = order.find(i => i.productId === id);
+
+    if (!item) {
+      // non c'è ancora --> aggiungo una riga nuova con quantità 1
+      setOrder([...order, { productId: id, quantity: 1 }]);
+    } else if (item.quantity < MAX_QUANTITY) {
+      // c'è già --> map: per la riga giusta un oggetto nuovo con quantità + 1
+      setOrder(order.map(i => i.productId === id ? { ...i, quantity: i.quantity + 1 } : i));
+    }
+    // se è già a 5 non faccio niente
+  }
+
+  // "−": tolgo 1 alla riga giusta, poi elimino le righe arrivate a 0
+  function removeProduct(id: number) {
+    // map: la riga del prodotto cliccato diventa un oggetto nuovo, le altre restano uguali
+    const nuovoOrdine = order.map(i => i.productId === id ? { ...i, quantity: i.quantity - 1 } : i);
+
+    // filter: tengo solo le righe che hanno ancora almeno 1 pezzo
+    setOrder(nuovoOrdine.filter(i => i.quantity > 0));
+  }
+
+  // il form mi passa i dati del ritiro: mostro il messaggio e svuoto l'ordine
+  function confirmOrder(checkout: Checkout) {
+    setConfirmed(`Ordine per ${checkout.nome} (${checkout.classe}), ritiro a ${checkout.ritiro}, ${checkout.pagamento}: ${formatPrice(total)}`);
+    setOrder([]);
+  }
+
+  return (
+    <section className="min-h-screen flex justify-center items-center p-6">
+      <div className="w-full max-w-lg">
+        <h1 className="font-bold text-4xl text-center mb-8">Il bar della scuola</h1>
+
+        <Menu order={order} onAdd={addProduct} />
+
+        <Order order={order} total={total} onIncrease={addProduct} onDecrease={removeProduct} />
+
+        {/* form di conferma: con l'ordine vuoto il bottone è disattivato */}
+        <CheckoutForm disabled={order.length === 0} onSubmit={confirmOrder} />
+
+        {confirmed && <p className="text-center font-bold mt-6">{confirmed}</p>}
+      </div>
+    </section>
+  )
+}
+
+export default App
