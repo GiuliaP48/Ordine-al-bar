@@ -8,9 +8,18 @@ import { cn } from "../utils/cn";
 type CheckoutFormProps = {
     onSubmit?: (data: Checkout) => void;
     disabled: boolean; // true quando l'ordine è vuoto: "Conferma ordine" non si può premere
+    total: number; // il totale dell'ordine: serve per il minimo di 3 € con la carta
 }
 
-// un solo stato: valori ed errori insieme
+// nessun errore:
+const emptyErrors = {
+    nome: [] as string[],
+    classe: [] as string[],
+    pagamento: [] as string[],
+    note: [] as string[]
+}
+
+// un solo stato: i valori e se il form è già stato inviato
 const defaultState = {
     values: {
         nome: "",
@@ -19,23 +28,16 @@ const defaultState = {
         pagamento: 'contanti',
         note: "",
     } as Checkout,
-    errors: {
-        nome: [] as string[],
-        classe: [] as string[], 
-        note: [] as string[]
-    }
+    submitted: false, // diventa true al primo invio: da lì gli errori si aggiornano da soli
 }
 
-const CheckoutForm = ({ onSubmit, disabled }: CheckoutFormProps) => {
+const CheckoutForm = ({ onSubmit, disabled, total }: CheckoutFormProps) => {
     const [formState, setFormState] = useState(defaultState);
 
-    function confirmCheckout(e: React.SubmitEvent<HTMLFormElement>) {
-        e.preventDefault(); // la pagina non si ricarica
-
-        // costruisco gli errori in una variabile, e solo alla fine li salvo nello stato
-        let errors = { ...defaultState.errors };
-
-        const nome = formState.values.nome.trim();
+    // controlla i valori e restituisce gli errori di ogni campo
+    function validate(values: Checkout) {
+        let errors = { ...emptyErrors };
+        const nome = values.nome.trim();
 
         // NOME
         if (!nome) {
@@ -51,21 +53,36 @@ const CheckoutForm = ({ onSubmit, disabled }: CheckoutFormProps) => {
         }
 
         // CLASSE
-        if (!formState.values.classe) {
+        if (!values.classe) {
             errors = { ...errors, classe: ['La classe è obbligatoria'] };
-        } else if (!/^[1-5][A-Z]$/.test(formState.values.classe)) {
+        } else if (!/^[1-5][A-Z]$/.test(values.classe)) {
             // ^ = inizio, [1-5] = un numero da 1 a 5, [A-Z] = una lettera maiuscola, $ = fine (quindi niente altro)
             errors = { ...errors, classe: ['Scrivi un numero da 1 a 5 e una lettera maiuscola (es. 4B)'] };
         }
 
+        // PAGAMENTO: con la carta il minimo è 3 €
+        if (values.pagamento === 'carta' && total < 3) {
+            errors = { ...errors, pagamento: ['Con la carta l\'ordine minimo è 3,00 €'] };
+        }
+
         // NOTE (facoltative)
-        if (formState.values.note.length > 100) {
+        if (values.note.length > 100) {
             errors = { ...errors, note: ['Le note possono avere al massimo 100 caratteri'] };
         }
 
-        // se almeno un campo ha errori, li mostro e mi fermo
-        if (Object.values(errors).some(arr => arr.length)) {
-            setFormState(prev => ({ ...prev, errors }));
+        return errors;
+    }
+
+    // prima del primo invio nessun errore, dopo li ricalcolo a ogni modifica (anche quando cambia l'ordine)
+    const errors = formState.submitted ? validate(formState.values) : emptyErrors;
+
+    function confirmCheckout(e: React.SubmitEvent<HTMLFormElement>) {
+        e.preventDefault(); // la pagina non si ricarica
+
+        // se almeno un campo ha errori, mi fermo
+        // submitted: true --> da adesso gli errori si vedono e si aggiornano da soli
+        if (Object.values(validate(formState.values)).some(arr => arr.length)) {
+            setFormState(prev => ({ ...prev, submitted: true }));
             return;
         }
 
@@ -83,7 +100,7 @@ const CheckoutForm = ({ onSubmit, disabled }: CheckoutFormProps) => {
                     ...prev,
                     values: { ...prev.values, nome: valore },
                 }))}
-                errors={formState.errors.nome}
+                errors={errors.nome}
             />
 
             <Input
@@ -93,7 +110,7 @@ const CheckoutForm = ({ onSubmit, disabled }: CheckoutFormProps) => {
                     ...prev,
                     values: { ...prev.values, classe: valore },
                 }))}
-                errors={formState.errors.classe}
+                errors={errors.classe}
             />
 
             {/* ritiro: questi due NON inviano il form */}
@@ -127,6 +144,9 @@ const CheckoutForm = ({ onSubmit, disabled }: CheckoutFormProps) => {
                     Carta
                 </Button>
             </div>
+            {errors.pagamento.map(err => (
+                <p key={err} className="text-red-600 text-sm mt-1 px-4">{err}</p>
+            ))}
 
             {/* note: su più righe, quindi textarea invece di Input */}
             <textarea
@@ -137,9 +157,14 @@ const CheckoutForm = ({ onSubmit, disabled }: CheckoutFormProps) => {
                     ...prev,
                     values: { ...prev.values, note: e.target.value },
                 }))}
-                className={cn("bg-gray-200 rounded-xl w-full py-2 px-4", formState.errors.note.length > 0 && "border-2 border-red-500")}
+                className={cn("bg-gray-200 rounded-xl w-full py-2 px-4",errors.note.length > 0 && "border-2 border-red-500")}
             />
-            {formState.errors.note.map(err => (
+            {/* contatore dei caratteri: rosso sopra 100 */}
+            <p className={cn("text-sm px-4 text-gray-500", formState.values.note.length > 100 && "text-red-600")}>
+                {formState.values.note.length}/100
+            </p>
+
+            {errors.note.map(err => (
                 <p key={err} className="text-red-600 text-sm mt-1 px-4">{err}</p>
             ))}
 

@@ -60,8 +60,8 @@ function App() {
 
         <Order order={order} total={total} onIncrease={addProduct} onDecrease={removeProduct} />
 
-        {/* form di conferma: con l'ordine vuoto il bottone è disattivato */}
-        <CheckoutForm disabled={order.length === 0} onSubmit={confirmOrder} />
+        {/* form di conferma: con l'ordine vuoto il bottone è disattivato, aggiungo il totale dell'ordine */}
+        <CheckoutForm total={total} disabled={order.length === 0} onSubmit={confirmOrder} />
 
         {confirmed && <p className="text-center font-bold mt-6">{confirmed}</p>}
       </div>
