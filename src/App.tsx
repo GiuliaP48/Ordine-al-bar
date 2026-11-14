@@ -24,6 +24,9 @@ function App() {
   // totale con reduce: parto da 0 e per ogni riga aggiungo prezzo × quantità
   const total = order.reduce((somma, item) => somma + getProduct(item.productId).price * item.quantity, 0);
 
+  // quanti ordini da ritirare sono a ricreazione: al massimo 3
+  const numRicreazione = pickups.filter(p => p.checkout.ritiro === 'ricreazione').length;
+
   // "Aggiungi" e "+" fanno la stessa cosa
   function addProduct(id: number) {
     const item = order.find(i => i.productId === id);
@@ -75,8 +78,8 @@ function App() {
 
         <Order order={order} total={total} onIncrease={addProduct} onDecrease={removeProduct} />
 
-        {/* form di conferma: con l'ordine vuoto il bottone è disattivato, aggiungo il totale dell'ordine */}
-        <CheckoutForm total={total} disabled={order.length === 0} onSubmit={confirmOrder} />
+        {/* form di conferma: con l'ordine vuoto il bottone è disattivato; gli passo il totale (per il minimo con la carta) e se la ricreazione è piena */}
+        <CheckoutForm total={total} disabled={order.length === 0} ricreazionePiena={numRicreazione >= 3} onSubmit={confirmOrder} />
 
         <PickupList pickups={pickups} onPickedUp={pickedUp} />
 

@@ -9,12 +9,14 @@ type CheckoutFormProps = {
     onSubmit?: (data: Checkout) => void;
     disabled: boolean; // true quando l'ordine è vuoto: "Conferma ordine" non si può premere
     total: number; // il totale dell'ordine: serve per il minimo di 3 € con la carta
+    ricreazionePiena: boolean; // true quando ci sono già 3 ordini da ritirare a ricreazione
 }
 
 // nessun errore:
 const emptyErrors = {
     nome: [] as string[],
     classe: [] as string[],
+    ritiro: [] as string[],
     pagamento: [] as string[],
     note: [] as string[]
 }
@@ -31,7 +33,7 @@ const defaultState = {
     submitted: false, // diventa true al primo invio: da lì gli errori si aggiornano da soli
 }
 
-const CheckoutForm = ({ onSubmit, disabled, total }: CheckoutFormProps) => {
+const CheckoutForm = ({ onSubmit, disabled, total, ricreazionePiena }: CheckoutFormProps) => {
     const [formState, setFormState] = useState(defaultState);
 
     // controlla i valori e restituisce gli errori di ogni campo
@@ -60,6 +62,11 @@ const CheckoutForm = ({ onSubmit, disabled, total }: CheckoutFormProps) => {
             errors = { ...errors, classe: ['Scrivi un numero da 1 a 5 e una lettera maiuscola (es. 4B)'] };
         }
 
+        // RITIRO: a ricreazione al massimo 3 ordini
+        if (values.ritiro === 'ricreazione' && ricreazionePiena) {
+            errors = { ...errors, ritiro: ['La ricreazione è piena (massimo 3 ordini): scegli pranzo'] };
+        }
+
         // PAGAMENTO: con la carta il minimo è 3 €
         if (values.pagamento === 'carta' && total < 3) {
             errors = { ...errors, pagamento: ['Con la carta l\'ordine minimo è 3,00 €'] };
@@ -75,6 +82,9 @@ const CheckoutForm = ({ onSubmit, disabled, total }: CheckoutFormProps) => {
 
     // prima del primo invio nessun errore, dopo li ricalcolo a ogni modifica (anche quando cambia l'ordine)
     const errors = formState.submitted ? validate(formState.values) : emptyErrors;
+
+    // la ricreazione piena la segnalo subito, anche prima dell'invio
+    const ritiroErrors = validate(formState.values).ritiro;
 
     function confirmCheckout(e: React.SubmitEvent<HTMLFormElement>) {
         e.preventDefault(); // la pagina non si ricarica
@@ -118,6 +128,7 @@ const CheckoutForm = ({ onSubmit, disabled, total }: CheckoutFormProps) => {
                 <Button
                     variant={formState.values.ritiro === 'ricreazione' ? 'primary' : 'secondary'}
                     onClick={() => setFormState(prev => ({ ...prev, values: { ...prev.values, ritiro: 'ricreazione' } }))}
+                    disabled={ricreazionePiena}
                 >
                     Ricreazione
                 </Button>
@@ -128,6 +139,9 @@ const CheckoutForm = ({ onSubmit, disabled, total }: CheckoutFormProps) => {
                     Pranzo
                 </Button>
             </div>
+            {ritiroErrors.map(err => (
+                <p key={err} className="text-red-600 text-sm mt-1 px-4">{err}</p>
+            ))}
 
             {/* pagamento: anche questi due NON inviano il form */}
             <div className="flex gap-2">
