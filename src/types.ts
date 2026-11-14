@@ -13,7 +13,7 @@ export type Checkout = {
 // un ordine confermato che aspetta di essere ritirato
 export type PickupOrder = {
     id: number;
-    checkout: Checkout; // nome, classe, ritiro, pagamento, note
+    checkout: Checkout; // nome, classe, ritiro, pagamento, note e codice sconto
     items: OrderItem[]; // i prodotti ordinati
-    total: number; // il totale pagato
+    total: number; // il totale pagato (già scontato, se c'era il codice)
 }

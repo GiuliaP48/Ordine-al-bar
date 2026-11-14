@@ -51,7 +51,7 @@ function App() {
     setOrder(nuovoOrdine.filter(i => i.quantity > 0));
   }
 
-  // il form mi passa i dati del ritiro: mostro il messaggio e svuoto l'ordine
+  // il form mi passa i dati del ritiro: calcolo il totale scontato, mostro il messaggio, aggiungo l'ordine a "Da ritirare" e svuoto l'ordine
   function confirmOrder(checkout: Checkout) {
     // il totale con lo sconto, se c'è
     const finalTotal = applyDiscount(total, checkout.codice);

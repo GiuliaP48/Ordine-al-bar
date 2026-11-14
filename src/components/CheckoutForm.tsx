@@ -14,7 +14,7 @@ type CheckoutFormProps = {
     ricreazionePiena: boolean; // true quando ci sono già 3 ordini da ritirare a ricreazione
 }
 
-// nessun errore:
+// nessun errore: ogni campo ha la sua lista di messaggi, all'inizio vuota
 const emptyErrors = {
     nome: [] as string[],
     classe: [] as string[],
