@@ -7,12 +7,14 @@ import { formatPrice } from "./utils/formatPrice";
 import Menu from "./components/Menu";
 import Order from "./components/Order";
 import CheckoutForm from "./components/CheckoutForm";
-import type { Checkout } from "./types";
+import type { Checkout, PickupOrder } from "./types";
+import PickupList from "./components/PickupList";
 
 function App() {
   // lo stato sta tutto in App e scende ai componenti con le props
   const [order, setOrder] = useState<OrderItem[]>([]);
   const [confirmed, setConfirmed] = useState("");
+  const [pickups, setPickups] = useState<PickupOrder[]>([]); // gli ordini confermati da ritirare
 
   // trovo nel menu il prodotto con questo id
   function getProduct(id: number) {
@@ -48,7 +50,20 @@ function App() {
   // il form mi passa i dati del ritiro: mostro il messaggio e svuoto l'ordine
   function confirmOrder(checkout: Checkout) {
     setConfirmed(`Ordine per ${checkout.nome} (${checkout.classe}), ritiro a ${checkout.ritiro}, ${checkout.pagamento}: ${formatPrice(total)}`);
+    // lo aggiungo agli ordini da ritirare: copio dati del form, prodotti e totale prima di svuotare l'ordine
+    setPickups(prev => [...prev, {
+      // lo 0 serve quando la lista è vuota: così il primo ordine ha id 1
+      id: Math.max(0, ...prev.map(p => p.id)) + 1,
+      checkout,
+      items: order,
+      total,
+    }]);
     setOrder([]);
+  }
+
+  // "Ritirato": tolgo l'ordine dalla lista
+  function pickedUp(id: number) {
+    setPickups(prev => prev.filter(p => p.id !== id));
   }
 
   return (
@@ -62,6 +77,8 @@ function App() {
 
         {/* form di conferma: con l'ordine vuoto il bottone è disattivato, aggiungo il totale dell'ordine */}
         <CheckoutForm total={total} disabled={order.length === 0} onSubmit={confirmOrder} />
+
+        <PickupList pickups={pickups} onPickedUp={pickedUp} />
 
         {confirmed && <p className="text-center font-bold mt-6">{confirmed}</p>}
       </div>
