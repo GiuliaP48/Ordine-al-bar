@@ -3,12 +3,14 @@ import Button from "./Button";
 import Input from "./Input";
 import type { Checkout } from "../types";
 import { cn } from "../utils/cn";
+import { applyDiscount, DISCOUNT_CODE } from "../utils/applyDiscount";
+import { formatPrice } from "../utils/formatPrice";
 
 // le props che CheckoutForm riceve da App
 type CheckoutFormProps = {
     onSubmit?: (data: Checkout) => void;
     disabled: boolean; // true quando l'ordine è vuoto: "Conferma ordine" non si può premere
-    total: number; // il totale dell'ordine: serve per il minimo di 3 € con la carta
+    total: number; // il totale dell'ordine: serve per il totale scontato e per il minimo di 3 € con la carta
     ricreazionePiena: boolean; // true quando ci sono già 3 ordini da ritirare a ricreazione
 }
 
@@ -18,7 +20,8 @@ const emptyErrors = {
     classe: [] as string[],
     ritiro: [] as string[],
     pagamento: [] as string[],
-    note: [] as string[]
+    note: [] as string[],
+    codice: [] as string[],
 }
 
 // un solo stato: i valori e se il form è già stato inviato
@@ -29,6 +32,7 @@ const defaultState = {
         ritiro: 'ricreazione',
         pagamento: 'contanti',
         note: "",
+        codice: "",
     } as Checkout,
     submitted: false, // diventa true al primo invio: da lì gli errori si aggiornano da soli
 }
@@ -67,14 +71,19 @@ const CheckoutForm = ({ onSubmit, disabled, total, ricreazionePiena }: CheckoutF
             errors = { ...errors, ritiro: ['La ricreazione è piena (massimo 3 ordini): scegli pranzo'] };
         }
 
-        // PAGAMENTO: con la carta il minimo è 3 €
-        if (values.pagamento === 'carta' && total < 3) {
+        // PAGAMENTO: con la carta il minimo è 3 € (contando lo sconto)
+        if (values.pagamento === 'carta' && applyDiscount(total, values.codice) < 3) {
             errors = { ...errors, pagamento: ['Con la carta l\'ordine minimo è 3,00 €'] };
         }
 
         // NOTE (facoltative)
         if (values.note.length > 100) {
             errors = { ...errors, note: ['Le note possono avere al massimo 100 caratteri'] };
+        }
+
+        // CODICE SCONTO (facoltativo): se c'è, deve essere BAR10
+        if (values.codice.trim() && values.codice.trim().toUpperCase() !== DISCOUNT_CODE) {
+            errors = { ...errors, codice: ['Codice sconto non valido'] };
         }
 
         return errors;
@@ -85,6 +94,9 @@ const CheckoutForm = ({ onSubmit, disabled, total, ricreazionePiena }: CheckoutF
 
     // la ricreazione piena la segnalo subito, anche prima dell'invio
     const ritiroErrors = validate(formState.values).ritiro;
+
+    // il totale con lo sconto, se il codice è giusto (altrimenti è uguale al totale)
+    const totaleScontato = applyDiscount(total, formState.values.codice);
 
     function confirmCheckout(e: React.SubmitEvent<HTMLFormElement>) {
         e.preventDefault(); // la pagina non si ricarica
@@ -181,6 +193,21 @@ const CheckoutForm = ({ onSubmit, disabled, total, ricreazionePiena }: CheckoutF
             {errors.note.map(err => (
                 <p key={err} className="text-red-600 text-sm mt-1 px-4">{err}</p>
             ))}
+
+            <Input
+                placeholder="Codice sconto (facoltativo)"
+                value={formState.values.codice}
+                onChange={(valore) => setFormState(prev => ({
+                    ...prev,
+                    values: { ...prev.values, codice: valore },
+                }))}
+                errors={errors.codice}
+            />
+
+            {/* se il codice è giusto, mostro il totale scontato prima di confermare */}
+            {totaleScontato < total &&
+                <p className="font-semibold px-4">Totale scontato: {formatPrice(totaleScontato)}</p>
+            }
 
             {/* questo invia il form (anche premendo Invio); con l'ordine vuoto è disattivato */}
             <Button type="submit" disabled={disabled} className="w-fit">Conferma ordine</Button>

@@ -9,6 +9,7 @@ import Order from "./components/Order";
 import CheckoutForm from "./components/CheckoutForm";
 import type { Checkout, PickupOrder } from "./types";
 import PickupList from "./components/PickupList";
+import { applyDiscount } from "./utils/applyDiscount";
 
 function App() {
   // lo stato sta tutto in App e scende ai componenti con le props
@@ -52,14 +53,17 @@ function App() {
 
   // il form mi passa i dati del ritiro: mostro il messaggio e svuoto l'ordine
   function confirmOrder(checkout: Checkout) {
-    setConfirmed(`Ordine per ${checkout.nome} (${checkout.classe}), ritiro a ${checkout.ritiro}, ${checkout.pagamento}: ${formatPrice(total)}`);
+    // il totale con lo sconto, se c'è
+    const finalTotal = applyDiscount(total, checkout.codice);
+
+    setConfirmed(`Ordine per ${checkout.nome} (${checkout.classe}), ritiro a ${checkout.ritiro}, ${checkout.pagamento}: ${formatPrice(finalTotal)}`);
     // lo aggiungo agli ordini da ritirare: copio dati del form, prodotti e totale prima di svuotare l'ordine
     setPickups(prev => [...prev, {
       // lo 0 serve quando la lista è vuota: così il primo ordine ha id 1
       id: Math.max(0, ...prev.map(p => p.id)) + 1,
       checkout,
       items: order,
-      total,
+      total: finalTotal, 
     }]);
     setOrder([]);
   }
